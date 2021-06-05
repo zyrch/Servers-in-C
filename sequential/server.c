@@ -10,7 +10,7 @@
 #define WAITING_FOR_MSG 0
 #define IN_MESSAGE 1
 
-void serve_conncetion(int sockfd) {
+void serve_connection(int sockfd) {
 
   int bytes_sent;
 
@@ -18,6 +18,7 @@ void serve_conncetion(int sockfd) {
 
   if (bytes_sent < 1) {
     perror("Error while sending '*'");
+    // TODO: use errno
     exit(-1);
   }
 
@@ -77,7 +78,7 @@ int main(int argc, char **argv) {
     }
 
     print_peer_info(&peer_addr, peer_addr_size);
-    serve_conncetion(new_fd);
+    serve_connection(new_fd);
 
     printf("Connection with Peer Closed");
     fflush(stdout);
