@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
     print_peer_info(&peer_addr, peer_addr_size);
     serve_connection(new_fd);
 
-    printf("Connection with Peer Closed");
+    printf("Connection with Peer Closed\n");
     fflush(stdout);
 
   }
