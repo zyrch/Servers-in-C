@@ -8,10 +8,6 @@
 
 #include "../../headers/utils.h"
 
-#define WAITING_FOR_MSG 0
-#define IN_MESSAGE 1
-
-void serve_connection(int sockfd);
 void* server_thread(void *arg);
 
 struct thread_config{
@@ -68,50 +64,3 @@ void* server_thread(void *arg) {
 }
   
 
-
-void serve_connection(int sockfd) {
-
-  int bytes_sent;
-
-  bytes_sent = send(sockfd, "*", 1, 0);
-
-  if (bytes_sent < 1) {
-    perror("Error while sending '*'");
-    return;
-  }
-
-  int state = WAITING_FOR_MSG;
-
-  while(1) {
-    char buf[1024];
-    int bytes_received = recv(sockfd, buf, 1024, 0);
-
-    if (bytes_received < 0) {
-      perror("Error recv(): ");
-      return;
-    }else if(bytes_received == 0) {
-      break;
-    }
-
-    for (int i = 0; i < bytes_received; ++i) {
-      if (state == WAITING_FOR_MSG) {
-        if (buf[i] == '^') {
-          state = IN_MESSAGE;
-        }
-      }else {
-        if (buf[i] == '$') {
-          state = WAITING_FOR_MSG;
-        }else {
-          buf[i] += 1;
-          bytes_sent = send(sockfd, &buf[i], 1, 0);
-          if (bytes_sent < 0) {
-            perror("Error in In Message: ");
-            return;
-          }
-        }
-      }
-    }
-  }
-
-  close(sockfd);
-}

@@ -6,7 +6,56 @@
 
 
 #define N_BACKLOG 20
+#define WAITING_FOR_MSG 0
+#define IN_MESSAGE 1
 
+void serve_connection(int sockfd) {
+
+  int bytes_sent;
+
+  bytes_sent = send(sockfd, "*", 1, 0);
+
+  if (bytes_sent < 1) {
+    perror("Error while sending '*'");
+    // TODO: use errno
+    exit(-1);
+  }
+
+  int state = WAITING_FOR_MSG;
+
+  while(1) {
+    char buf[1024];
+    int bytes_received = recv(sockfd, buf, 1024, 0);
+
+    if (bytes_received < 0) {
+      perror("Error recv(): ");
+      exit(-1);
+    }else if(bytes_received == 0) {
+      break;
+    }
+
+    for (int i = 0; i < bytes_received; ++i) {
+      if (state == WAITING_FOR_MSG) {
+        if (buf[i] == '^') {
+          state = IN_MESSAGE;
+        }
+      }else {
+        if (buf[i] == '$') {
+          state = WAITING_FOR_MSG;
+        }else {
+          buf[i] += 1;
+          bytes_sent = send(sockfd, &buf[i], 1, 0);
+          if (bytes_sent < 0) {
+            perror("Error in In Message: ");
+            exit(-1);
+          }
+        }
+      }
+    }
+  }
+
+  close(sockfd);
+}
 
 void print_peer_info(const struct sockaddr_in* sa, socklen_t salen) {
   // NI_MAXHOST = 1025 and NI_MAXSERV = 32, defined in <netdb.h>
