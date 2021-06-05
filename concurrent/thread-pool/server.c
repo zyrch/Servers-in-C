@@ -6,12 +6,12 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include "../../utils/utils.h"
+#include "../../headers/utils.h"
+#include "../../headers/thpool.h"
 
-#define WAITING_FOR_MSG 0
-#define IN_MESSAGE 1
+#define N_THREADS 4
 
-void* server_thread(void *arg);
+void server_thread(void *arg);
 
 struct thread_config{
   int sockfd;
@@ -23,6 +23,12 @@ int main(int argc, char **argv) {
 
   printf("socket file descriptor : %d\n", sockfd);
 
+  threadpool thpool = thpool_init(N_THREADS);
+
+  if (thpool == NULL) {
+    puts("Error While Creating Thread Pool\n");
+    return -1;
+  }
 
   while (1) {
 
@@ -43,26 +49,22 @@ int main(int argc, char **argv) {
     struct thread_config config;
     config.sockfd = new_fd;
 
-    if (pthread_create(&thread, NULL, server_thread, &config) < 0) {
-      perror("Pthread_Create: ");
-      return -1;
+    if (thpool_add_work(thpool, server_thread, &config) < 0) {
+      puts("Error Occured while adding work to thread pool\n");
     }
-
-    pthread_detach(thread);
-
   }
+
+  thpool_wait(thpool);
 
   close(sockfd);
 }
 
-void* server_thread(void *arg) {
+void server_thread(void *arg) {
   
   int sockfd = ((struct thread_config*)arg)->sockfd;
 
-  printf("Thread started, socket %d\n", sockfd);
   serve_connection(sockfd);
-  printf("Connection with Peer Closed, sockfd %d\n", sockfd);
 
-  return 0;
 }
   
+
