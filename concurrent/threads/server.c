@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include "../../utils/utils.h"
+#include "../../headers/utils.h"
 
 #define WAITING_FOR_MSG 0
 #define IN_MESSAGE 1

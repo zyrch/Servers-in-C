@@ -4,10 +4,10 @@ server: utils utils_header
 	gcc server.c -o server utils.o -pthread
 
 utils: utils_header
-	gcc -c ../../utils/utils.c
+	gcc -c ../../src/utils.c
 
 utils_header:
-	gcc ../../utils/utils.h
+	gcc ../../headers/utils.h
 
 clean: 
-	rm -f utils.o server ../../utils/utils.h.gch
+	rm -f utils.o server ../../headers/utils.h.gch
