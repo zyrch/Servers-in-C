@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "utils.h"
+#include "../utils/utils.h"
 
 #define WAITING_FOR_MSG 0
 #define IN_MESSAGE 1
