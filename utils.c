@@ -1,10 +1,24 @@
 #include <string.h> 
 #include <stdio.h>
+#include <netdb.h>
 
 #include "utils.h"
 
 
 #define N_BACKLOG 20
+
+
+void print_peer_info(const struct sockaddr_in* sa, socklen_t salen) {
+  // NI_MAXHOST = 1025 and NI_MAXSERV = 32, defined in <netdb.h>
+  char hostbuf[NI_MAXHOST];
+  char portbuf[NI_MAXSERV];
+
+  if (getnameinfo((struct sockaddr*)sa, salen, hostbuf, NI_MAXHOST, portbuf, NI_MAXSERV, 0) == 0) {
+    printf("peer (%s, %s) connected\n", hostbuf, portbuf);
+  } else {
+    printf("peer (unknonwn) connected\n");
+  }
+}
 
 int listen_inet_socket(int portnum) {
   
@@ -47,5 +61,7 @@ int listen_inet_socket(int portnum) {
     perror("Error: ");
     return -1;
   }
+
+  return sockfd;
 
 }
