@@ -18,7 +18,7 @@ void serve_conncetion(int sockfd) {
 
   if (bytes_sent < 1) {
     perror("Error while sending '*'");
-    return;
+    exit(-1);
   }
 
   int state = WAITING_FOR_MSG;
@@ -29,7 +29,7 @@ void serve_conncetion(int sockfd) {
 
     if (bytes_received < 0) {
       perror("Error recv(): ");
-      return;
+      exit(-1);
     }else if(bytes_received == 0) {
       break;
     }
@@ -47,7 +47,7 @@ void serve_conncetion(int sockfd) {
           bytes_sent = send(sockfd, &buf[i], 1, 0);
           if (bytes_sent < 0) {
             perror("Error in In Message: ");
-            return;
+            exit(-1);
           }
         }
       }
@@ -73,7 +73,6 @@ int main(int argc, char **argv) {
 
     if (new_fd < 0) {
       perror("Error: ");
-      // exit permanently?
       return -1;
     }
 
@@ -81,6 +80,7 @@ int main(int argc, char **argv) {
     serve_conncetion(new_fd);
 
     printf("Connection with Peer Closed");
+    fflush(stdout);
 
   }
 
