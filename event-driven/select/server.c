@@ -24,6 +24,10 @@ typedef struct {
   bool want_write;
 } fd_status_t;
 
+// Stores the state of a file descriptor
+// write_buf     -- Buffer of data needs to be send
+// write_buf_len -- length of valid buf
+// write_buf_ptr -- ptr to next find to send
 typedef struct {
   char write_buf[BUFF_SIZE];
   int write_buf_len;
@@ -32,8 +36,10 @@ typedef struct {
   fd_status_t fd_status;
 } fd_state_t;
 
+// After a file descriptor is closed data is overwritten by the new file descriptor
 fd_state_t fd_state[MAXFDS];
 
+// fd_status_t struct of each type
 fd_status_t fd_status_R = (fd_status_t) {.want_read = true, .want_write = false};
 fd_status_t fd_status_W = (fd_status_t) {.want_read = false, .want_write = true};
 fd_status_t fd_status_RW = (fd_status_t) {.want_read = true, .want_write = true};
@@ -41,12 +47,17 @@ fd_status_t fd_status_NRW = (fd_status_t) {.want_read = false, .want_write = fal
 
 void client_recv(int sockfd) {
   
+  // receives data from sockfd 
+  // updates the states of fd_state_t accordingly
+  // if EAGAIN or EWOULDBLOCK is returns it does nothing
+  
   assert(sockfd < MAXFDS);
 
   fd_state_t *client_state = &fd_state[sockfd];
   
+  // Cannot recieve data util ACK has been sent to client
   if (client_state->pState == IN_ACK) {
-    client_state->fd_status = fd_status_R;
+    client_state->fd_status = fd_status_W;
     return;
   }
 
@@ -92,10 +103,16 @@ void client_recv(int sockfd) {
 
 
 void client_send(int sockfd) {
+
+  // sends data from fd_state[sockfd].write_buf to sockfd, 
+  // updates the states of fd_state_t accordingly
+  // if EAGAIN or EWOULDBLOCK is returns it does nothing
   assert(sockfd < MAXFDS);
   fd_state_t *client_state = &fd_state[sockfd];
 
   if (client_state->write_buf_ptr == client_state->write_buf_len) {
+    // if buffer is full sent
+    // both write_buf_ptr and write_buf_len should be zero
     client_state->fd_status = fd_status_RW;
     return;
   }
