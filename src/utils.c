@@ -84,8 +84,8 @@ int listen_inet_socket(int portnum) {
 
   int yes = 1;
 
-  // Clear the port to prevent "address in use" error message 
-  // SOL_SOCKET   -- Protocol levet for option is socket level
+  // Specifies options for the socket associated with the file descriptor 
+  // SOL_SOCKET   -- Protocol level for option is socket level
   // SO_REUSEADDR -- Reuse of addresses in bind()
   if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
     perror("setsockopt");

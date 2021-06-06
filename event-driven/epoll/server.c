@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/select.h>
+#include <sys/epoll.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -13,7 +14,7 @@
 #include "../../headers/utils.h"
 
 #define BUFF_SIZE 1024
-#define MAXFDS 1024
+#define MAXFDS 100000
 
 int CUR_MAXFDS;
 
@@ -77,7 +78,6 @@ void client_recv(int sockfd) {
     // connection closed
     client_state->pState = IN_ACK;
     client_state->fd_status = fd_status_NRW;
-    close(sockfd);
     return;
   }
 
@@ -185,31 +185,43 @@ int client_connect(int sockfd) {
   client_state->write_buf[0] = '*';
   client_state->write_buf_len = 1;
 
-  return new_fd;
 
+  return new_fd;
 }
 
-void update_fds(fd_set *read, fd_set *write, int fd) {
+void update_fds(int epfd, int fd) {
   
+  struct epoll_event new_event;
+  new_event.data.fd = fd;
+
   int cnt = 0;
+
   if (fd_state[fd].fd_status.want_read) {
     ++cnt;
-    FD_SET(fd, read);
-  }else {
-    FD_CLR(fd, read);
+    new_event.events |= EPOLLIN;
   }
 
   if (fd_state[fd].fd_status.want_write) {
     ++cnt;
-    FD_SET(fd, write);
-  }else {
-    FD_CLR(fd, write);
+    new_event.events |= EPOLLOUT;
   }
+
   if (!cnt) {
+    // In most cases this step is not necessary
+    // discriptor is automatically deleted from epoll after closing
+    // see man epoll Q6 for more details
+    if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL) < 0) {
+      perror("epoll_ctl DEL");
+      exit(-1);
+    }
     close(fd);
+    return;
+  }
+
+  if (epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &new_event) < 0) {
+    perror("epoll_ctl MOD");
   }
 }
-
 
 int main(int argc, char **argv) {
   
@@ -219,56 +231,68 @@ int main(int argc, char **argv) {
 
   printf("socket file descriptor : %d\n", sockfd);
 
-  fd_set global_readfds;
-  fd_set global_writefds;
+  int epfd = epoll_create1(0);
 
-  FD_ZERO(&global_readfds);
-  FD_ZERO(&global_writefds);
+  // define an event from file descriptor to be watched by epoll
+  struct epoll_event accept_event;
+  accept_event.data.fd = sockfd;
+  // only in events for listening socket
+  accept_event.events = EPOLLIN;
 
-  FD_SET(sockfd, &global_readfds);
-  CUR_MAXFDS = sockfd;
-
-  fd_state[sockfd].fd_status.want_read = true;
+  // add epoll_event to epfd, epoll will now watch the file descriptor defined by epoll_event
+  if (epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &accept_event) < 0) {
+    perror("Adding with epoll_clt");
+    return -1;
+  }
+  
+  // allocated memory of events from epoll_wait
+  struct epoll_event* events = calloc(MAXFDS, sizeof(struct epoll_event));
+  if (events == NULL) {
+    perror("Unable to allocate memory for epoll_events");
+    return -1;
+  }
 
   while (1) {
-
-    // since select() changes the fd_set passed to it, copies
-    // are made to preserve the global_* fd_set
-    fd_set local_readfds = global_readfds;
-    fd_set local_writefds = global_writefds;
-
-    // Timeout -- NULL - One return if a change is observed
+    // Timeout -- -1 - One return if a change is observed
     // returns number of modified descriptors
-    int modified = select(CUR_MAXFDS + 1, &local_readfds, &local_writefds, NULL, NULL);
+    int modified = epoll_wait(epfd, events, MAXFDS, -1);
 
     if (modified < 0) {
       perror("Select: ");
       return -1;
     }
 
-    for (int fd = 0; fd < CUR_MAXFDS + 1 && modified; ++fd) {
+    for (int i = 0; i < modified; ++i) {
+      // Check if error occured in epoll
+      if (events[i].events & EPOLLERR) {
+        perror("epoll_wait returned EPOLLERR");
+        return -1;
+      }
 
-      if (FD_ISSET(fd, &local_readfds)) {
-        --modified;
-        if (fd == sockfd) {
-          // New Client connect
-          int new_fd = client_connect(fd);
-          if (new_fd < 0) continue;
+      if (events[i].events & EPOLLIN) {
+        // IN event 
+        if (events[i].data.fd == sockfd) {
 
-          update_fds(&global_readfds, &global_writefds, new_fd);
+          int new_fd = client_connect(events[i].data.fd);
+
+          struct epoll_event new_event;
+          new_event.data.fd = new_fd;
+          new_event.events = EPOLLOUT;
+
+          if (epoll_ctl(epfd, EPOLL_CTL_ADD, new_fd, &new_event) < 0) {
+            perror("Adding with epoll_ctl");
+            return -1;
+          }
         }else {
-          //receive from client and switch set to write
-          client_recv(fd);
-          update_fds(&global_readfds, &global_writefds, fd);
+          client_recv(events[i].data.fd);
+          update_fds(epfd, events[i].data.fd);
         }
+      }else if (events[i].events & EPOLLOUT) {
+        // OUT event
+        client_send(events[i].data.fd);
+        update_fds(epfd, events[i].data.fd);
       }
 
-      if (FD_ISSET(fd, &local_writefds)){
-        --modified;
-        // write to client and switch set
-        client_send(fd);
-        update_fds(&global_readfds, &global_writefds, fd);
-      }
     }
   }
 
