@@ -1,6 +1,7 @@
 #include <string.h> 
 #include <stdio.h>
 #include <netdb.h>
+#include <fcntl.h>
 
 #include "../headers/utils.h"
 
@@ -114,3 +115,23 @@ int listen_inet_socket(int portnum) {
   return sockfd;
 
 }
+
+void make_socket_non_blocking(int sockfd) {
+
+  int flags = fcntl(sockfd, F_GETFL, 0);  
+
+  if (flags == -1) {
+    perror("fnctl :");
+    exit(-1);
+  }
+
+  flags |= O_NONBLOCK;
+  
+  if (fcntl(sockfd, F_SETFL, flags) < 0) {
+    perror("fnctl :");
+    exit(-1);
+  }
+
+}
+
+

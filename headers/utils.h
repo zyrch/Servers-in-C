@@ -18,4 +18,6 @@ void print_peer_info(const struct sockaddr_in* sa, socklen_t salen);
 
 void serve_connection(int sockfd);
 
+void make_socket_non_blocking(int sockfd);
+
 #endif // UTILS_H
