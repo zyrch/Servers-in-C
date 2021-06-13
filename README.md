@@ -1,6 +1,6 @@
 # Concurrent servers in c
 
-Imlementation of concurrent severs in c from scratch using [this awesome blog](https://eli.thegreenplace.net/2017/concurrent-servers-part-1-introduction/) as a template.
+Imlementation of concurrent severs in c from scratch using [this awesome blog](https://eli.thegreenplace.net/2017/concurrent-servers-part-1-introduction/) as a tutorial.
 
 ### Project Structure
 
