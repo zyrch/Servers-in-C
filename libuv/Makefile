@@ -1,5 +1,13 @@
-server: clean
-	gcc server.c -o server -luv
+all: server utils utils_header
 
-clean:
-	rm -rf server
+server: utils utils_header
+	gcc server.c -o server utils.o -luv
+
+utils: utils_header
+	gcc -c ../src/utils.c
+
+utils_header:
+	gcc ../headers/utils.h
+
+clean: 
+	rm -f utils.o server ../headers/utils.h.gch
